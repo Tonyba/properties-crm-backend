@@ -3,6 +3,9 @@
 
 namespace Inc\Api;
 
+use Inc\Service\UpdatesService;
+
+
 if (!defined('ABSPATH')) {
     die;
 }
@@ -10,6 +13,7 @@ if (!defined('ABSPATH')) {
 class LeadsApi
 {
     private $post_type = 'lead';
+
     private $select_taxonomies = array(
         'industry',
         'lead_source',
@@ -78,10 +82,6 @@ class LeadsApi
 
             return $terms;
         }
-
-
-
-
     }
 
     public function register()
@@ -101,6 +101,26 @@ class LeadsApi
 
         add_action('wp_ajax_lead_select_values', array($this, 'send_selects_values'));
         add_action('wp_ajax_nopriv_lead_select_values', array($this, 'send_selects_values'));
+
+        add_action('wp_ajax_lead_agents', array($this, 'lead_agents'));
+        add_action('wp_ajax_nopriv_lead_agents', array($this, 'lead_agents'));
+    }
+
+    public function lead_agents()
+    {
+        $agents = get_users(array('role' => 'agent'));
+
+        $data = [];
+
+        foreach ($agents as $agent) {
+            $data[] = array(
+                'id' => $agent->ID,
+                'name' => $agent->display_name
+            );
+        }
+
+        return wp_send_json($data);
+
     }
 
     public function send_selects_values()
@@ -140,7 +160,9 @@ class LeadsApi
 
     public function get_leads()
     {
-        $filters = $_POST['filters'];
+        $filters = isset($_POST['filters']) ? wp_unslash($_POST['filters']) : '';
+        $filters = json_decode($filters, true);
+
         $row = $_POST['page'];
         $row_per_page = $_POST['perPage'];
 
@@ -164,28 +186,9 @@ class LeadsApi
 
         $filters = sanitize_associative_array($filters);
 
-        if (!empty($filters)) {
-            $args['tax_query']['relation'] = 'AND';
-            $args['meta_query'][] = ['relation' => 'AND'];
+        $msg = '';
 
-            foreach ($filters as $item => $value) {
-                if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
-                    $args['tax_query'][] = [
-                        'taxonomy' => $item,
-                        'terms' => array($value),
-                        'field' => 'term_id'
-                    ];
-                }
 
-                if (in_array($item, $fields) && ($value && !empty($value))) {
-                    $args['meta_query'][0][] = [
-                        'key' => $item,
-                        'value' => $value,
-                        'compare' => '='
-                    ];
-                }
-            }
-        }
 
         $counts = wp_count_posts($this->post_type);
         $total_records = $counts->publish;
@@ -198,6 +201,42 @@ class LeadsApi
             'meta_query' => [],
             'tax_query' => []
         );
+
+        if (!empty($filters)) {
+            $args['tax_query']['relation'] = 'AND';
+            $args['meta_query'][] = ['relation' => 'AND'];
+
+            foreach ($filters as $item => $value) {
+
+                if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
+                    $args['tax_query'][] = [
+                        'taxonomy' => $item,
+                        'terms' => array($value),
+                        'field' => 'term_id'
+                    ];
+                }
+
+                if (in_array($item, $fields) && ($value && !empty($value))) {
+
+                    if (!is_array($value)) {
+                        $args['meta_query'][0][] = [
+                            'key' => $item,
+                            'value' => $value,
+                            'compare' => is_numeric($value) ? '=' : 'LIKE'
+                        ];
+                    } else {
+                        $args['meta_query'][0][] = [
+                            'key' => $item,
+                            'value' => $value,
+                            'compare' => 'IN',
+
+                        ];
+                    }
+
+                }
+            }
+        }
+
 
 
         $query = new \WP_Query($args);
@@ -212,7 +251,9 @@ class LeadsApi
         $response = array(
             'recordsTotal' => intval($total_records),
             'recordsFiltered' => $total_records_filtered,
-            'data' => $data_arr
+            'data' => $data_arr,
+            'args' => $args,
+            'msg' => $msg
         );
 
         return wp_send_json($response);
@@ -313,13 +354,14 @@ class LeadsApi
 
     public function edit_lead()
     {
+
         $fields = isset($_POST['fields']) ? wp_unslash($_POST['fields']) : '';
         $fields = json_decode($fields, true);
 
         $fields = sanitize_associative_array($fields);
         $is_valid = $this->check_body($fields);
 
-        if (!$is_valid) {
+        if (!$is_valid || !isset($fields['id'])) {
 
             return wp_send_json(array(
                 'ok' => false,
@@ -337,6 +379,8 @@ class LeadsApi
             ), 400);
 
         } else {
+
+            do_action('pre_post_update', $lead_id, $fields);
 
             $field_groups = acf_get_field_groups([
                 'post_type' => $this->post_type
@@ -366,6 +410,7 @@ class LeadsApi
                     update_field($item, $value, $lead_id);
                 }
             }
+
 
             return wp_send_json(array(
                 'ok' => true,

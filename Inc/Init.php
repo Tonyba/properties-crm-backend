@@ -2,6 +2,9 @@
 
 namespace Inc;
 
+if (!defined('ABSPATH')) {
+    die;
+}
 
 final class Init
 {
@@ -13,7 +16,8 @@ final class Init
             Base\Enqueue::class,
             Api\PropertiesApi::class,
             Api\LeadsApi::class,
-            Base\SettingsLinks::class
+            Base\SettingsLinks::class,
+            Service\UpdatesService::class
         ];
     }
 
