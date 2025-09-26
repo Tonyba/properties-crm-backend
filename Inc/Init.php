@@ -15,6 +15,7 @@ final class Init
             Pages\Admin::class,
             Base\Enqueue::class,
             Api\PropertiesApi::class,
+            Api\DocumentsApi::class,
             Api\LeadsApi::class,
             Base\SettingsLinks::class,
             Service\UpdatesService::class

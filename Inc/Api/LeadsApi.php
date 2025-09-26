@@ -3,6 +3,7 @@
 
 namespace Inc\Api;
 
+use Inc\Service\HelpersService;
 use Inc\Service\UpdatesService;
 
 
@@ -13,6 +14,13 @@ if (!defined('ABSPATH')) {
 class LeadsApi
 {
     private $post_type = 'lead';
+
+    private $helperService;
+
+    public function __construct()
+    {
+        $this->helperService = new HelpersService();
+    }
 
     private $select_taxonomies = array(
         'industry',
@@ -259,25 +267,6 @@ class LeadsApi
         return wp_send_json($response);
     }
 
-    private function check_body($body)
-    {
-        $is_valid = true;
-
-        foreach ($this->expected_body as $expected) {
-            $expected_key = $expected['key'];
-            $is_required = $expected['required'];
-
-            if (
-                (!isset($body[$expected_key]) || empty($body[$expected_key])) && $is_required
-            ) {
-                $is_valid = false;
-                break;
-            }
-        }
-
-
-        return $is_valid;
-    }
 
     public function new_lead()
     {
@@ -286,7 +275,7 @@ class LeadsApi
         $fields = json_decode($fields, true);
 
         $fields = sanitize_associative_array($fields);
-        $is_valid = $this->check_body($fields);
+        $is_valid = $this->helperService->check_body($fields, $this->expected_body);
 
         if (!$is_valid) {
 
@@ -354,12 +343,11 @@ class LeadsApi
 
     public function edit_lead()
     {
-
         $fields = isset($_POST['fields']) ? wp_unslash($_POST['fields']) : '';
         $fields = json_decode($fields, true);
 
         $fields = sanitize_associative_array($fields);
-        $is_valid = $this->check_body($fields);
+        $is_valid = $this->helperService->check_body($fields, $this->expected_body);
 
         if (!$is_valid || !isset($fields['id'])) {
 
@@ -379,7 +367,7 @@ class LeadsApi
             ), 400);
 
         } else {
-
+            $fields['action'] = 'edited';
             do_action('pre_post_update', $lead_id, $fields);
 
             $field_groups = acf_get_field_groups([

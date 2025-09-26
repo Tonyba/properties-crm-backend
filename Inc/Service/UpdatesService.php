@@ -5,7 +5,14 @@ namespace Inc\Service;
 class UpdatesService
 {
     private $post_type = 'update';
-    private $valid_post_types = ['lead', 'contact', 'property', 'task', 'event'];
+    private $valid_post_types = ['lead', 'contact', 'property', 'task', 'event', 'document'];
+
+    private $helpersService;
+
+    function __construct()
+    {
+        $this->helpersService = new HelpersService();
+    }
 
     public function register()
     {
@@ -36,21 +43,47 @@ class UpdatesService
             'update_post_meta_cache' => false,
             'cache_results' => true,
             'meta_query' => array(
-                'key' => 'relation',
-                'compare' => '=',
-                'value' => $relation_id
+                'relation' => 'OR',
+                array(
+                    'key' => 'relation',
+                    'value' => $relation_id,
+                    'compare' => '='
+                ),
+                array(
+                    'key' => 'affected_other',
+                    'value' => $relation_id,
+                    'compare' => '='
+                )
             )
         );
 
         $query = new \WP_Query($query_args);
         $updates = [];
 
+        $creation = [];
+        $related_obj = get_post($relation_id);
+
+        $creator = get_user_by('id', $related_obj->post_author == 0 ? 1 : $related_obj->post_author);
+
+        $creation['id'] = 0;
+        $creation['date'] = $related_obj->post_date . ' - ' . $this->helpersService->timeAgo($related_obj->post_date);
+        $creation['user'] = $creator->display_name;
+        $creation['action'] = 'Created';
+
+        $updates[] = $creation;
+
         foreach ($query->posts as $update) {
             $updates[] = $this->construct_object($update);
         }
+        usort($updates, function ($a, $b) {
+            return strtotime($b['date']) <=> strtotime($a['date']);
+        });
 
-
-        return wp_send_json($updates);
+        return wp_send_json(array(
+            'ok' => true,
+            'data' => $updates,
+            'args' => $query_args
+        ));
     }
 
     private function formatSpecialValues($key, $value)
@@ -80,6 +113,10 @@ class UpdatesService
 
         if (!in_array($relation_post_type, $this->valid_post_types))
             return $new_data;
+
+        $action = $new_data['action'];
+
+        $action_selected = get_term_by('slug', $action, 'update-action');
 
         $user_id = 1;
         // $user_id = get_current_user_id(  );
@@ -129,10 +166,46 @@ class UpdatesService
             ]);
         }
 
+        wp_set_post_terms($id, $action_selected->term_id, 'update-action');
+
         $inserted_old = '';
         $insert_new = '';
 
-        foreach ($old_data as $key => $value) {
+        $filtered_old_data = [];
+        $filterd_new_data = [];
+
+        foreach ($new_data as $key => $value) {
+            if (array_key_exists($key, $old_data)) {
+
+                $is_term = taxonomy_exists($key);
+
+                if ($old_data[$key] != $value && !$is_term) {
+                    $filtered_old_data[$key] = $old_data[$key];
+                    $filterd_new_data[$key] = $value;
+                } else {
+                    foreach ($old_data[$key] as $term) {
+                        $term_id = $term->term_id;
+                        if (is_array($value)) {
+                            foreach ($value as $val) {
+                                if ($val != $term_id) {
+                                    $filtered_old_data[$key] = $old_data[$key];
+                                    $filterd_new_data[$key] = $value;
+                                }
+                            }
+                        } else {
+                            if ($value != $term_id) {
+                                $filtered_old_data[$key] = $old_data[$key];
+                                $filterd_new_data[$key] = $value;
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+        foreach ($filtered_old_data as $key => $value) {
             if (is_array($value)) {
                 $inserted_old .= "<strong>$key:</strong> ";
                 $arr_count = count($value);
@@ -148,8 +221,8 @@ class UpdatesService
             }
         }
 
-        foreach ($new_data as $key => $value) {
-            error_log("$key: $value");
+        foreach ($filterd_new_data as $key => $value) {
+
             if (is_array($value) || taxonomy_exists($key)) {
 
                 if (is_array($value)) {
@@ -180,9 +253,9 @@ class UpdatesService
         update_field('relation', $relation_id, $id);
         update_field('new_data', $insert_new, $id);
         update_field('old_data', $inserted_old, $id);
-
+        if (isset($new_data['affected_other']))
+            update_field('affected_other', $new_data['affected_other'], $id);
     }
-
 
     private function construct_object($id)
     {
@@ -196,12 +269,23 @@ class UpdatesService
         $user_id = get_field('user', $id);
         $user = get_user_by('id', $user_id);
 
+        $action = wp_get_post_terms($id, 'update-action', ['fields' => 'names']);
+        $action = $action[0];
 
-        $object['date'] = $date;
+        $object['date'] = $date . ' - ' . $this->helpersService->timeAgo($date);
         $object['new_data'] = $new_data;
         $object['old_data'] = $old_data;
         $object['user'] = $user->display_name;
         $object['id'] = $id;
+        $object['action'] = $action;
+
+        if ($action === 'Linked') {
+            unset($object['new_data']);
+            unset($object['old_data']);
+
+            $affected = get_post_type(get_field('relation', $id));
+            $object['affected'] = $affected;
+        }
 
         return $object;
     }
