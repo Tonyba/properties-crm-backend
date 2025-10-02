@@ -37,8 +37,10 @@ class UpdatesService
         $query_args = array(
             'post_type' => $this->post_type,
             'fields' => 'ids',
-            'posts_per_page' => -1,
+            'posts_per_page' => 50,
             'no_found_rows' => true,
+            'orderby' => 'publish_date',
+            'order' => 'DESC',
             'update_post_term_cache' => false,
             'update_post_meta_cache' => false,
             'cache_results' => true,
@@ -70,19 +72,16 @@ class UpdatesService
         $creation['user'] = $creator->display_name;
         $creation['action'] = 'Created';
 
-        $updates[] = $creation;
 
         foreach ($query->posts as $update) {
             $updates[] = $this->construct_object($update);
         }
-        usort($updates, function ($a, $b) {
-            return strtotime($b['date']) <=> strtotime($a['date']);
-        });
+
+        $updates[] = $creation;
 
         return wp_send_json(array(
             'ok' => true,
             'data' => $updates,
-            'args' => $query_args
         ));
     }
 
@@ -132,10 +131,28 @@ class UpdatesService
 
         $acf_fields = wp_list_pluck($acf_fields, 'name');
 
-        $taxonomies = get_taxonomies(['object_type' => [$relation_post_type]]);
+
         $taxonomies_arr = [];
-        foreach ($taxonomies as $taxonomy => $value) {
-            $taxonomies_arr[] = $value;
+
+        if ($relation_post_type != 'task' && $relation_post_type != 'event') {
+
+        }
+
+        switch ($relation_post_type) {
+            case 'task':
+                $taxonomies_arr = ['event_state', 'priority'];
+                break;
+
+            case 'event':
+                $taxonomies_arr = ['event_state', 'priority', 'event_type'];
+                break;
+
+            default:
+                $taxonomies = get_taxonomies(['object_type' => [$relation_post_type]]);
+                foreach ($taxonomies as $taxonomy => $value) {
+                    $taxonomies_arr[] = $value;
+                }
+                break;
         }
 
         $old_data = [];
@@ -279,12 +296,16 @@ class UpdatesService
         $object['id'] = $id;
         $object['action'] = $action;
 
-        if ($action === 'Linked') {
+        if ($action == 'Linked') {
             unset($object['new_data']);
             unset($object['old_data']);
 
-            $affected = get_post_type(get_field('relation', $id));
-            $object['affected'] = $affected;
+            $relation = get_field('relation', $id);
+
+            if (is_numeric($relation)) {
+                $affected = get_post_type($relation);
+                $object['affected'] = $affected;
+            }
         }
 
         return $object;

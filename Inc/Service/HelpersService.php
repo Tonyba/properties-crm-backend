@@ -108,7 +108,7 @@ class HelpersService
         $this->save_custom_data($id, $fields, $post_type);
     }
 
-    public function save_custom_data($id, $fields, $post_type)
+    public function save_custom_data($id, $fields, $post_type, $specific_taxonomies = [])
     {
         $field_groups = acf_get_field_groups([
             'post_type' => $post_type
@@ -121,11 +121,18 @@ class HelpersService
 
         $acf_fields = wp_list_pluck($acf_fields, 'name');
 
-        $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
+        $taxonomies = [];
         $taxonomies_arr = [];
 
-        foreach ($taxonomies as $taxonomy => $value) {
-            $taxonomies_arr[] = $value;
+        if (!empty($specific_taxonomies)) {
+            foreach ($specific_taxonomies as $taxonomy) {
+                $taxonomies_arr[] = $taxonomy;
+            }
+        } else {
+            $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
+            foreach ($taxonomies as $taxonomy => $value) {
+                $taxonomies_arr[] = $value;
+            }
         }
 
         foreach ($fields as $item => $value) {
@@ -140,29 +147,54 @@ class HelpersService
         }
     }
 
-    public function get_post_types_taxonomies_terms($post_type)
+    public function get_post_types_taxonomies_terms($post_type, $specific_taxonomies = [])
     {
         $data = [];
-        $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
 
-        foreach ($taxonomies as $taxonomy => $value) {
-            $terms = get_terms([
-                'taxonomy' => $value,
-                'hide_empty' => false,
-                'fields' => 'id=>name'
-            ]);
 
-            $formatted = [];
+        if (!empty($specific_taxonomies)) {
+            foreach ($specific_taxonomies as $taxonomy) {
+                $terms = get_terms([
+                    'taxonomy' => $taxonomy,
+                    'hide_empty' => false,
+                    'fields' => 'id=>name'
+                ]);
 
-            foreach ($terms as $term_id => $term_name) {
-                $formatted[] = [
-                    'label' => $term_name,
-                    'value' => $term_id
-                ];
+                $formatted = [];
+
+                foreach ($terms as $term_id => $term_name) {
+                    $formatted[] = [
+                        'label' => $term_name,
+                        'value' => $term_id
+                    ];
+                }
+
+                $data[$taxonomy] = $formatted;
             }
 
-            $data[$value] = $formatted;
+        } else {
+            $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
+            foreach ($taxonomies as $taxonomy => $value) {
+                $terms = get_terms([
+                    'taxonomy' => $value,
+                    'hide_empty' => false,
+                    'fields' => 'id=>name'
+                ]);
+
+                $formatted = [];
+
+                foreach ($terms as $term_id => $term_name) {
+                    $formatted[] = [
+                        'label' => $term_name,
+                        'value' => $term_id
+                    ];
+                }
+
+                $data[$value] = $formatted;
+            }
         }
+
+
 
         return $data;
     }

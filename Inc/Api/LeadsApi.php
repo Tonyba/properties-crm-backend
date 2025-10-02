@@ -194,9 +194,6 @@ class LeadsApi
 
         $filters = sanitize_associative_array($filters);
 
-        $msg = '';
-
-
 
         $counts = wp_count_posts($this->post_type);
         $total_records = $counts->publish;
@@ -260,8 +257,7 @@ class LeadsApi
             'recordsTotal' => intval($total_records),
             'recordsFiltered' => $total_records_filtered,
             'data' => $data_arr,
-            'args' => $args,
-            'msg' => $msg
+            //     'args' => $args,
         );
 
         return wp_send_json($response);

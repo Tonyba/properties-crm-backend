@@ -17,6 +17,8 @@ final class Init
             Api\PropertiesApi::class,
             Api\DocumentsApi::class,
             Api\LeadsApi::class,
+            Api\TasksApi::class,
+            Api\EventsApi::class,
             Base\SettingsLinks::class,
             Service\UpdatesService::class
         ];

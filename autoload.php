@@ -2,6 +2,8 @@
 
 require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'constants.php';
 
+require_once PLUGIN_PATH . 'interfaces/interfaces.php';
+
 require_once PLUGIN_PATH . 'Inc/Init.php';
 require_once PLUGIN_PATH . 'Inc/Api/PropertiesApi.php';
 require_once PLUGIN_PATH . 'Inc/Api/LeadsApi.php';

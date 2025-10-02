@@ -121,9 +121,11 @@ class DocumentsApi
 
         } else {
 
-            $fields['action'] = 'linked';
-            $fields['affected_other'] = $fields['relation'];
-            do_action('pre_post_update', $id, $fields);
+            if (isset($fields['relation'])) {
+                $fields['action'] = 'linked';
+                $fields['affected_other'] = $fields['relation'];
+                do_action('pre_post_update', $id, $fields);
+            }
 
             $internal_id = 0;
 
