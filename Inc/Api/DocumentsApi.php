@@ -48,6 +48,96 @@ class DocumentsApi
 
         add_action('wp_ajax_download_document', array($this, 'handle_document_download'));
         add_action('wp_ajax_nopriv_download_document', array($this, 'handle_document_download'));
+
+        add_action('wp_ajax_documents_list', array($this, 'docs_list'));
+        add_action('wp_ajax_nopriv_documents_list', array($this, 'docs_list'));
+    }
+
+    public function docs_list()
+    {
+        $filters = $this->helperService->sanitize_fields($_POST['filters']);
+
+        $row = isset($_POST['page']) && is_numeric($_POST['page']) ? intval($_POST['page']) : 1;
+        $row_per_page = isset($_POST['perPage']) && is_numeric($_POST['perPage']) ? intval($_POST['perPage']) : 20;
+
+        $field_groups = acf_get_field_groups([
+            'post_type' => $this->post_type
+        ]);
+
+        $fields = [];
+        foreach ($field_groups as $group) {
+            $fields = acf_get_fields($group['key']);
+        }
+
+        $fields = wp_list_pluck($fields, 'name');
+
+
+
+        $total_records = wp_count_posts($this->post_type)->publish;
+
+        $args = array(
+            'post_type' => $this->post_type,
+            'fields' => 'ids',
+            'posts_per_page' => intval($row_per_page),
+            'paged' => $row,
+            'meta_query' => [],
+            'tax_query' => [],
+            'date_query' => []
+        );
+
+        if (isset($filters['title'])) {
+            $args['s'] = $filters['title'];
+        }
+
+        if (!empty($filters)) {
+            $args['tax_query']['relation'] = 'AND';
+            $args['meta_query'][] = ['relation' => 'AND'];
+
+            foreach ($filters as $item => $value) {
+
+                if ($item == 'updated_at') {
+
+
+                } else {
+
+                    if (in_array($item, $fields) && ($value && !empty($value))) {
+
+                        if (!is_array($value)) {
+                            $args['meta_query'][0][] = [
+                                'key' => $item,
+                                'value' => $value,
+                                'compare' => is_numeric($value) ? '=' : 'LIKE'
+                            ];
+                        } else {
+                            $args['meta_query'][0][] = [
+                                'key' => $item,
+                                'value' => $value,
+                                'compare' => 'IN',
+                            ];
+                        }
+
+                    }
+
+                }
+            }
+        }
+
+        $query = new \WP_Query($args);
+
+        $total_records_filtered = $query->found_posts;
+        $data_arr = [];
+
+        foreach ($query->posts as $id) {
+            $data_arr[] = $this->construct_obj($id, true);
+        }
+
+        $response = array(
+            'recordsTotal' => intval($total_records),
+            'recordsFiltered' => $total_records_filtered,
+            'data' => $data_arr,
+        );
+
+        return wp_send_json($response);
     }
 
     public function get_related_documents()
@@ -289,14 +379,21 @@ class DocumentsApi
         exit;
     }
 
-    private function construct_obj($id)
+    private function construct_obj($id, $list = false)
     {
         $obj = [];
+        $obj['id'] = $id;
         $obj = $this->helperService->get_data($id, $this->post_type);
         $obj['title'] = get_the_title($id);
         $obj['file_id'] = $obj['file'];
         $obj['file'] = wp_get_attachment_url($obj['file']);
         $obj['filename'] = basename(parse_url($obj['file'], PHP_URL_PATH));
+
+        if ($list) {
+            $assigned = get_field('assigned_to', $id);
+            $user = get_user_by('id', $assigned);
+            $obj['assigned_to'] = $user->display_name;
+        }
 
         return $obj;
     }

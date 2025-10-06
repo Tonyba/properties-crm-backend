@@ -4,6 +4,33 @@ namespace Inc\Service;
 
 class HelpersService
 {
+    public function register()
+    {
+        add_action('wp_ajax_trash_item', array($this, 'delete_item'));
+        add_action('wp_ajax_nopriv_trash_item', array($this, 'delete_item'));
+    }
+
+    public function delete_item()
+    {
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $relation = isset($_POST['relation']) ? intval($_POST['relation']) : 0;
+
+        if ($id && $relation) {
+            $fields = array(
+                'action' => 'trashed',
+                'affected_other' => $relation,
+            );
+            do_action('pre_post_update', $id, $fields);
+            var_dump($fields);
+            wp_trash_post($id);
+            wp_send_json_success(['ok' => true, 'msg' => 'Deleted successfully']);
+        } else {
+            wp_send_json_error(['ok' => false, 'msg' => 'Invalid Request']);
+        }
+
+        wp_die();
+    }
+
     public function timeAgo($datetime)
     {
         $timestamp = strtotime($datetime);
@@ -46,7 +73,7 @@ class HelpersService
 
     public function sanitize_fields($fields)
     {
-        $fields = isset($_POST['fields']) ? wp_unslash($_POST['fields']) : '';
+        $fields = isset($fields) ? wp_unslash($fields) : '';
         $fields = json_decode($fields, true);
 
         $fields = sanitize_associative_array($fields);
@@ -142,6 +169,10 @@ class HelpersService
 
 
             if (in_array($item, $acf_fields) && ($value && !empty($value))) {
+                if ($item == 'from' || $item == 'to') {
+                    $date_object = \DateTime::createFromFormat('d/m/Y H:i', $value);
+                    $value = $date_object->format('Y-m-d H:i:s');
+                }
                 update_field($item, $value, $id);
             }
         }

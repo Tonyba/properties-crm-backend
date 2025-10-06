@@ -113,20 +113,38 @@ class EventsApi
             foreach ($filters as $item => $value) {
 
                 if ($item == 'from' && isset($filters['to'])) {
-                    $args['date_query'][] = array(
-                        'after' => $value,
-                        'before' => $filters['to'],
-                        'inclusive' => true
+
+                    $args['meta_query'][0][] = array(
+                        'key' => $item,
+                        'value' => $value,
+                        'compare' => '>=',
+                        'type' => 'DATE',
                     );
+
+
+                    $args['meta_query'][0][] = array(
+                        'key' => 'to', // Replace with your custom field key storing the date
+                        'value' => $filters['to'],
+                        'compare' => '<=',
+                        'type' => 'DATE', // Specify the type as DATE for proper comparison
+                    );
+
+
                 } elseif ($item == 'from' && !isset($filters['to'])) {
-                    $args['date_query'][] = array(
-                        'after' => $value
+                    $args['meta_query'][0][] = array(
+                        'key' => $item, // Replace with your custom field key storing the date
+                        'value' => $value,
+                        'compare' => '>=',
+                        'type' => 'DATE', // Specify the type as DATE for proper comparison
                     );
                 } elseif ($item == 'to' && !isset($filters['from'])) {
-                    $args['date_query'][] = array(
-                        'before' => $value
+                    $args['meta_query'][0][] = array(
+                        'key' => $item, // Replace with your custom field key storing the date
+                        'value' => $value,
+                        'compare' => '<=',
+                        'type' => 'DATE', // Specify the type as DATE for proper comparison
                     );
-                } else {
+                } else if ($item != 'to' && $item != 'from') {
 
                     if (in_array($item, $this->specific_taxonomies) && ($value && !empty($value))) {
                         $args['tax_query'][] = [
@@ -149,7 +167,6 @@ class EventsApi
                                 'key' => $item,
                                 'value' => $value,
                                 'compare' => 'IN',
-
                             ];
                         }
 
@@ -171,8 +188,7 @@ class EventsApi
         $response = array(
             'recordsTotal' => intval($total_records),
             'recordsFiltered' => $total_records_filtered,
-            'data' => $data_arr,
-            //     'args' => $args,
+            'data' => $data_arr
         );
 
         return wp_send_json($response);

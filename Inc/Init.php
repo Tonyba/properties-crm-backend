@@ -20,7 +20,8 @@ final class Init
             Api\TasksApi::class,
             Api\EventsApi::class,
             Base\SettingsLinks::class,
-            Service\UpdatesService::class
+            Service\UpdatesService::class,
+            Service\HelpersService::class,
         ];
     }
 
