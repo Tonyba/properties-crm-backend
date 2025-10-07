@@ -51,6 +51,10 @@ class EventsApi
         add_action('wp_ajax_create_event', array($this, 'create_event'));
         add_action('wp_ajax_nopriv_create_event', array($this, 'create_event'));
 
+        add_action('wp_ajax_edit_event', array($this, 'edit_event'));
+        add_action('wp_ajax_nopriv_edit_event', array($this, 'edit_event'));
+
+
         add_action('wp_ajax_related_activities', array($this, 'related_activities'));
         add_action('wp_ajax_nopriv_related_activities', array($this, 'related_activities'));
 
@@ -282,9 +286,65 @@ class EventsApi
         }
     }
 
-    public function update_event()
+    public function edit_event()
     {
+        $fields = $this->helperService->sanitize_fields($_POST['fields']);
+        $is_valid = $this->helperService->check_body($fields, $this->expected_body);
 
+        if (!$is_valid || !isset($fields['id'])) {
+            return wp_send_json(array(
+                'ok' => false,
+                'msg' => 'invalid field or fields'
+            ), 400);
+        }
+
+        $id = $fields['id'];
+        $default_user = get_current_user_id();
+        $default_user = $default_user == 0 ? 1 : $default_user;
+
+        $assigned_to = isset($fields['assigned_to']) ? $fields['assigned_to'] : $default_user;
+
+        if (!$is_valid) {
+            return wp_send_json(array(
+                'ok' => false,
+                'msg' => 'invalid field or fields'
+            ), 400);
+        }
+
+        $args = array(
+            'post_title' => $fields['title'],
+            'post_status' => 'publish',
+            'post_type' => isset($fields['post_type']) ? $fields['post_type'] : $this->post_type,
+            'post_author' => $assigned_to,
+            'ID' => $id,
+        );
+
+        $id = wp_update_post($args);
+
+        if (is_wp_error($id)) {
+
+            return wp_send_json(array(
+                'ok' => false,
+                'msg' => "error found - $this->post_type not created"
+            ), 400);
+
+        } else {
+
+            if (isset($fields['relation'])) {
+                $fields['action'] = 'edited';
+                do_action('pre_post_update', $id, $fields);
+            }
+
+            $this->helperService->save_custom_data($id, $fields, $this->post_type, $this->specific_taxonomies);
+
+            $resp = [
+                'ok' => true,
+                'msg' => "$this->post_type edited",
+                'data' => $id
+            ];
+
+            return wp_send_json($resp, 201);
+        }
     }
 
     public function get_all_events()
@@ -319,15 +379,23 @@ class EventsApi
         $obj['id'] = $id;
         $obj['date'] = $date;
         $obj['status'] = !empty($terms) ? $terms[0] : '';
+        $obj['relation'] = get_field('relation', $id);
+        $obj['from'] = get_field('from', $id);
+        $obj['to'] = get_field('to', $id);
+
+        if (!$list) {
+            $activity = wp_get_post_terms($id, 'event_type', ['fields' => 'ids']);
+            $obj['event_type'] = !empty($activity) ? $activity[0] : 'Task';
+            $obj['assigned_to'] = get_field('assigned_to', $id);
+        }
+
 
         if ($list) {
-            $activity = wp_get_post_terms($id, 'event_type', ['fields' => 'names']);
 
             $obj['event_status'] = !empty($terms) ? $terms[0] : '';
-            $obj['event_type'] = !empty($activity) ? $activity[0] : 'Task';
 
-            $obj['from'] = get_field('from', $id);
-            $obj['to'] = get_field('to', $id);
+            $activity = wp_get_post_terms($id, 'event_type', ['fields' => 'names']);
+            $obj['event_type'] = !empty($activity) ? $activity[0] : 'Task';
             $obj['description'] = get_field('description', $id);
 
             $assigned = get_field('assigned_to', $id);

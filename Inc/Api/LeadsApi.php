@@ -343,7 +343,7 @@ class LeadsApi
         $fields = json_decode($fields, true);
 
         $fields = sanitize_associative_array($fields);
-        $is_valid = $this->helperService->check_body($fields, $this->expected_body);
+        $is_valid = $this->helperService->check_body($fields, expected_body: $this->expected_body);
 
         if (!$is_valid || !isset($fields['id'])) {
 
@@ -353,21 +353,27 @@ class LeadsApi
             ), 400);
         }
 
-        $lead_id = $fields['id'];
+        $id = $fields['id'];
 
-        if (is_wp_error($lead_id)) {
+        $new_data = array(
+            'ID' => $id,
+        );
+
+        $data = wp_update_post($new_data);
+
+        if (is_wp_error($data)) {
 
             return wp_send_json(array(
                 'ok' => false,
-                'msg' => 'error found - lead not added'
+                'msg' => 'error found - not updated'
             ), 400);
 
         } else {
             $fields['action'] = 'edited';
-            do_action('pre_post_update', $lead_id, $fields);
+            do_action('pre_post_update', $id, $fields);
 
             $field_groups = acf_get_field_groups([
-                'post_type' => $this->post_type
+                'post_type' => $fields['post_type']
             ]);
 
             $acf_fields = [];
@@ -377,7 +383,7 @@ class LeadsApi
 
             $acf_fields = wp_list_pluck($acf_fields, 'name');
 
-            $taxonomies = get_taxonomies(['object_type' => [$this->post_type]]);
+            $taxonomies = get_taxonomies(['object_type' => [$fields['post_type']]]);
             $taxonomies_arr = [];
 
             foreach ($taxonomies as $taxonomy => $value) {
@@ -386,19 +392,19 @@ class LeadsApi
 
             foreach ($fields as $item => $value) {
                 if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
-                    wp_set_post_terms($lead_id, $value, $item);
+                    wp_set_post_terms($id, $value, $item);
                 }
 
 
                 if (in_array($item, $acf_fields) && ($value && !empty($value))) {
-                    update_field($item, $value, $lead_id);
+                    update_field($item, $value, $id);
                 }
             }
 
 
             return wp_send_json(array(
                 'ok' => true,
-                'msg' => 'lead edited',
+                'msg' => 'event/task edited',
             ), 201);
 
         }

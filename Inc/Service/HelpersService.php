@@ -171,7 +171,8 @@ class HelpersService
             if (in_array($item, $acf_fields) && ($value && !empty($value))) {
                 if ($item == 'from' || $item == 'to') {
                     $date_object = \DateTime::createFromFormat('d/m/Y H:i', $value);
-                    $value = $date_object->format('Y-m-d H:i:s');
+                    if ($date_object)
+                        $value = $date_object->format('Y-m-d H:i:s');
                 }
                 update_field($item, $value, $id);
             }
