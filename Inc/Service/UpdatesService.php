@@ -71,7 +71,7 @@ class UpdatesService
         $creation['date'] = $related_obj->post_date . ' - ' . $this->helpersService->timeAgo($related_obj->post_date);
         $creation['user'] = $creator->display_name;
         $creation['action'] = 'Created';
-
+        $creation['affected'] = $related_obj->post_type;
 
         foreach ($query->posts as $update) {
             $updates[] = $this->construct_object($update);
@@ -113,7 +113,7 @@ class UpdatesService
         if (!in_array($relation_post_type, $this->valid_post_types))
             return $new_data;
 
-        $action = $new_data['action'];
+        $action = isset($new_data['action']) ? $new_data['action'] : 'edited';
 
         $action_selected = get_term_by('slug', $action, 'update-action');
 
@@ -296,7 +296,7 @@ class UpdatesService
         $object['id'] = $id;
         $object['action'] = $action;
 
-        if ($action == 'Linked') {
+        if ($action == 'Linked' || $action == 'Trashed') {
             unset($object['new_data']);
             unset($object['old_data']);
 
@@ -306,6 +306,8 @@ class UpdatesService
                 $affected = get_post_type($relation);
                 $object['affected'] = $affected;
             }
+        } else {
+            $object['affected'] = get_post_type(get_field('relation', $id));
         }
 
         return $object;

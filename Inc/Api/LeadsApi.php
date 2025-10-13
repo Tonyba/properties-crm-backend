@@ -17,11 +17,6 @@ class LeadsApi
 
     private $helperService;
 
-    public function __construct()
-    {
-        $this->helperService = new HelpersService();
-    }
-
     private $select_taxonomies = array(
         'industry',
         'lead_source',
@@ -58,6 +53,36 @@ class LeadsApi
             'required' => true
         )
     );
+    public function __construct()
+    {
+        $this->helperService = new HelpersService();
+    }
+
+    public function register()
+    {
+        add_action('wp_ajax_get_leads', array($this, 'get_leads'));
+        add_action('wp_ajax_nopriv_get_leads', array($this, 'get_leads'));
+
+        add_action('wp_ajax_new_lead', array($this, 'new_lead'));
+        add_action('wp_ajax_nopriv_new_lead', array($this, 'new_lead'));
+
+        add_action('wp_ajax_edit_lead', array($this, 'edit_lead'));
+        add_action('wp_ajax_nopriv_edit_lead', array($this, 'edit_lead'));
+
+
+        add_action('wp_ajax_get_lead', array($this, 'get_lead'));
+        add_action('wp_ajax_nopriv_get_lead', array($this, 'get_lead'));
+
+        add_action('wp_ajax_lead_select_values', array($this, 'send_selects_values'));
+        add_action('wp_ajax_nopriv_lead_select_values', array($this, 'send_selects_values'));
+
+        add_action('wp_ajax_lead_agents', array($this, 'lead_agents'));
+        add_action('wp_ajax_nopriv_lead_agents', array($this, 'lead_agents'));
+
+
+        add_action('wp_ajax_delete_lead', array($this, 'delete_lead'));
+        add_action('wp_ajax_nopriv_delete_lead', array($this, 'delete_lead'));
+    }
 
     private function get_select_taxonomies()
     {
@@ -92,27 +117,7 @@ class LeadsApi
         }
     }
 
-    public function register()
-    {
-        add_action('wp_ajax_get_leads', array($this, 'get_leads'));
-        add_action('wp_ajax_nopriv_get_leads', array($this, 'get_leads'));
 
-        add_action('wp_ajax_new_lead', array($this, 'new_lead'));
-        add_action('wp_ajax_nopriv_new_lead', array($this, 'new_lead'));
-
-        add_action('wp_ajax_edit_lead', array($this, 'edit_lead'));
-        add_action('wp_ajax_nopriv_edit_lead', array($this, 'edit_lead'));
-
-
-        add_action('wp_ajax_get_lead', array($this, 'get_lead'));
-        add_action('wp_ajax_nopriv_get_lead', array($this, 'get_lead'));
-
-        add_action('wp_ajax_lead_select_values', array($this, 'send_selects_values'));
-        add_action('wp_ajax_nopriv_lead_select_values', array($this, 'send_selects_values'));
-
-        add_action('wp_ajax_lead_agents', array($this, 'lead_agents'));
-        add_action('wp_ajax_nopriv_lead_agents', array($this, 'lead_agents'));
-    }
 
     public function lead_agents()
     {
@@ -330,7 +335,7 @@ class LeadsApi
 
             return wp_send_json(array(
                 'ok' => true,
-                'msg' => 'lead added',
+                'msg' => $this->post_type . ' added',
             ), 201);
 
         }

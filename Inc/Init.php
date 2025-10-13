@@ -16,6 +16,7 @@ final class Init
             Base\Enqueue::class,
             Api\PropertiesApi::class,
             Api\DocumentsApi::class,
+            Api\ContactsApi::class,
             Api\LeadsApi::class,
             Api\TasksApi::class,
             Api\EventsApi::class,

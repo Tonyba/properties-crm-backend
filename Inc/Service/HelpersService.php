@@ -16,10 +16,18 @@ class HelpersService
         $relation = isset($_POST['relation']) ? intval($_POST['relation']) : 0;
 
         if ($id && $relation) {
+
             $fields = array(
                 'action' => 'trashed',
                 'affected_other' => $relation,
             );
+
+            if ($relation == 0) {
+                $search_relation = get_field('relation', $id);
+                if ($search_relation && $search_relation != 0)
+                    $fields['affected_other'] = $search_relation;
+            }
+
             do_action('pre_post_update', $id, $fields);
             var_dump($fields);
             wp_trash_post($id);
@@ -173,6 +181,10 @@ class HelpersService
                     $date_object = \DateTime::createFromFormat('d/m/Y H:i', $value);
                     if ($date_object)
                         $value = $date_object->format('Y-m-d H:i:s');
+                } else if ($item == 'birthdate') {
+                    $date_object = \DateTime::createFromFormat('Y-m-d', $value);
+                    if ($date_object)
+                        $value = $date_object->format('d/m/Y');
                 }
                 update_field($item, $value, $id);
             }
