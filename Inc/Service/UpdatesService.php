@@ -5,7 +5,7 @@ namespace Inc\Service;
 class UpdatesService
 {
     private $post_type = 'update';
-    private $valid_post_types = ['lead', 'contact', 'property', 'task', 'event', 'document'];
+    private $valid_post_types = ['lead', 'contact', 'property', 'task', 'event', 'document', 'opportunity'];
 
     private $helpersService;
 

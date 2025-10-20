@@ -4,7 +4,6 @@
 namespace Inc\Api;
 
 use Inc\Service\HelpersService;
-use Inc\Service\UpdatesService;
 
 
 if (!defined('ABSPATH')) {
@@ -51,6 +50,8 @@ class ContactsApi
         add_action('wp_ajax_get_contact', array($this, 'get_contact'));
         add_action('wp_ajax_nopriv_get_contact', array($this, 'get_contact'));
 
+        add_action('wp_ajax_contact_by_name_or_id', array($this, 'get_by_name_or_id'));
+        add_action('wp_ajax_nopriv_contact_by_name_or_id', array($this, 'get_by_name_or_id'));
     }
 
     public function get_taxonomies()
@@ -95,6 +96,7 @@ class ContactsApi
         $default_user = $default_user == 0 ? 1 : $default_user;
 
         $assigned_to = isset($fields['assigned_to']) ? $fields['assigned_to'] : $default_user;
+        $title = isset($fields['first_name']) ? $fields['first_name'] . ' ' . $fields['last_name'] : $this->post_type . '_' . wp_generate_uuid4();
 
         if (!$is_valid) {
             return wp_send_json(array(
@@ -104,7 +106,7 @@ class ContactsApi
         }
 
         $args = array(
-            'post_title' => $this->post_type . '_' . wp_generate_uuid4(),
+            'post_title' => $title,
             'post_status' => 'publish',
             'post_type' => $this->post_type,
             'post_author' => $assigned_to
@@ -132,6 +134,57 @@ class ContactsApi
             return wp_send_json($resp, 201);
         }
 
+    }
+
+    public function get_by_name_or_id()
+    {
+        $search_term = isset($_POST['search_term']) ? sanitize_text_field($_POST['search_term']) : '';
+        $id = isset($_POST['id']) ? sanitize_text_field($_POST['id']) : '';
+
+        if (empty($search_term) && empty($id)) {
+            return wp_send_json(array(), 200);
+        }
+
+        $args = array(
+            'post_type' => $this->post_type,
+            'fields' => 'ids',
+            'posts_per_page' => 10,
+            'no_found_rows' => true,
+            'post_status' => 'publish',
+            'meta_query' => array(
+                'relation' => 'OR',
+                array(
+                    'key' => 'first_name',
+                    'value' => $search_term,
+                    'compare' => 'LIKE'
+                ),
+                array(
+                    'key' => 'last_name',
+                    'value' => $search_term,
+                    'compare' => 'LIKE'
+                )
+            )
+        );
+
+
+        if (!empty($id) && is_numeric($id)) {
+            $args['p'] = intval($id);
+            unset($args['meta_query']);
+        }
+
+        $query = new \WP_Query($args);
+        $data = [];
+
+
+        foreach ($query->posts as $id) {
+            $title = get_field('first_name', $id) . ' ' . get_field('last_name', $id);
+            $data[] = [
+                'title' => $title,
+                'id' => $id,
+            ];
+        }
+
+        return wp_send_json($data);
     }
 
     public function edit_contact()

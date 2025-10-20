@@ -129,7 +129,7 @@ class HelpersService
         return $data;
     }
 
-    public function update_custom_data($id, $fields, $post_type)
+    public function update_custom_data($id, $fields, $post_type, $specific_taxonomies = [], $append_taxonomies = false)
     {
         if (isset($fields['title'])) {
             $new_data = array(
@@ -140,10 +140,10 @@ class HelpersService
             wp_update_post($new_data);
         }
 
-        $this->save_custom_data($id, $fields, $post_type);
+        $this->save_custom_data($id, $fields, $post_type, $specific_taxonomies, $append_taxonomies);
     }
 
-    public function save_custom_data($id, $fields, $post_type, $specific_taxonomies = [])
+    public function save_custom_data($id, $fields, $post_type, $specific_taxonomies = [], $append_taxonomies = false)
     {
         $field_groups = acf_get_field_groups([
             'post_type' => $post_type
@@ -159,12 +159,19 @@ class HelpersService
         $taxonomies = [];
         $taxonomies_arr = [];
 
-        if (!empty($specific_taxonomies)) {
+        if (!empty($specific_taxonomies) && !$append_taxonomies) {
             foreach ($specific_taxonomies as $taxonomy) {
                 $taxonomies_arr[] = $taxonomy;
             }
         } else {
             $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
+
+            foreach ($specific_taxonomies as $specific_taxonomy) {
+                if (!in_array($specific_taxonomy, $taxonomies)) {
+                    $taxonomies[] = $specific_taxonomy;
+                }
+            }
+
             foreach ($taxonomies as $taxonomy => $value) {
                 $taxonomies_arr[] = $value;
             }
@@ -191,12 +198,12 @@ class HelpersService
         }
     }
 
-    public function get_post_types_taxonomies_terms($post_type, $specific_taxonomies = [])
+    public function get_post_types_taxonomies_terms($post_type, $specific_taxonomies = [], $append = false)
     {
         $data = [];
 
 
-        if (!empty($specific_taxonomies)) {
+        if (!empty($specific_taxonomies) && !$append) {
             foreach ($specific_taxonomies as $taxonomy) {
                 $terms = get_terms([
                     'taxonomy' => $taxonomy,
@@ -218,6 +225,15 @@ class HelpersService
 
         } else {
             $taxonomies = get_taxonomies(['object_type' => [$post_type]]);
+
+            if ($append) {
+                foreach ($specific_taxonomies as $specific_taxonomy) {
+                    if (!in_array($specific_taxonomy, $taxonomies)) {
+                        $taxonomies[] = $specific_taxonomy;
+                    }
+                }
+            }
+
             foreach ($taxonomies as $taxonomy => $value) {
                 $terms = get_terms([
                     'taxonomy' => $value,

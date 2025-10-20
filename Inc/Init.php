@@ -17,6 +17,7 @@ final class Init
             Api\PropertiesApi::class,
             Api\DocumentsApi::class,
             Api\ContactsApi::class,
+            Api\OpportunitiesApi::class,
             Api\LeadsApi::class,
             Api\TasksApi::class,
             Api\EventsApi::class,

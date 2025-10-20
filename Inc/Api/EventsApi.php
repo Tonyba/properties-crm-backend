@@ -153,7 +153,7 @@ class EventsApi
                     if (in_array($item, $this->specific_taxonomies) && ($value && !empty($value))) {
                         $args['tax_query'][] = [
                             'taxonomy' => $item,
-                            'terms' => array($value),
+                            'terms' => is_array($value) ? $value : array($value),
                             'field' => 'term_id'
                         ];
                     }
@@ -192,7 +192,8 @@ class EventsApi
         $response = array(
             'recordsTotal' => intval($total_records),
             'recordsFiltered' => $total_records_filtered,
-            'data' => $data_arr
+            'data' => $data_arr,
+            'args' => $args
         );
 
         return wp_send_json($response);

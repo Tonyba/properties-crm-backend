@@ -117,8 +117,6 @@ class LeadsApi
         }
     }
 
-
-
     public function lead_agents()
     {
         $agents = get_users(array('role' => 'agent'));
