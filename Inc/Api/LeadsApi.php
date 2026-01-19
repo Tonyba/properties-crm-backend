@@ -164,8 +164,7 @@ class LeadsApi
         $data = $this->construct_object($lead_id, $updating);
 
         return wp_send_json(array(
-            'ok' => true,
-            'lead' => $data
+            'data' => $data
         ), 200);
     }
 

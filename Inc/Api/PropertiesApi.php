@@ -33,7 +33,7 @@ class PropertiesApi
             's' => $name,
             'fields' => 'ids',
             'search_columns' => array('post_title'),
-            'posts_per_page' => 10,
+            'posts_per_page' => -1,
             'post_status' => 'publish'
         );
 

@@ -65,12 +65,99 @@ class OpportunitiesApi
         add_action('wp_ajax_edit_opportunity', array($this, 'edit_opportunity'));
         add_action('wp_ajax_nopriv_edit_opportunity', array($this, 'edit_opportunity'));
 
+        add_action('wp_ajax_get_stages', array($this, 'get_stages'));
+        add_action('wp_ajax_nopriv_get_stages', array($this, 'get_stages'));
+
+        add_action('wp_ajax_change_stage', array($this, 'change_stage'));
+        add_action('wp_ajax_nopriv_change_stage', array($this, 'change_stage'));
+
+        add_action('wp_ajax_related_services', array($this, 'related_services'));
+        add_action('wp_ajax_nopriv_related_services', array($this, 'related_services'));
+
+
+    }
+
+    public function related_services()
+    {
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+        if ($id <= 0) {
+            return wp_send_json(array(
+                'ok' => false,
+                'msg' => 'invalid id'
+            ), 400);
+        }
+
+
+        $related_services = get_field('related_services', $id);
+        $data = [];
+
+        if (!empty($related_services)) {
+            foreach ($related_services as $service) {
+                $title = get_the_title($service);
+                $data[] = [
+                    'id' => $service,
+                    'title' => $title
+                ];
+            }
+        }
+
+
+
+
+        return wp_send_json($data);
     }
 
     public function get_taxonomies()
     {
         return wp_send_json($this->helperService->get_post_types_taxonomies_terms($this->post_type, $this->select_taxonomies, true));
     }
+
+
+    public function change_stage()
+    {
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $stage = isset($_POST['stage']) ? intval($_POST['stage']) : 0;
+
+        if ($id <= 0 || $stage <= 0) {
+            return wp_send_json(array(
+                'ok' => false,
+                'msg' => 'invalid id or stage'
+            ), 400);
+        }
+
+        wp_set_post_terms($id, array($stage), 'lead_status', false);
+
+        return wp_send_json(array(
+            'ok' => true,
+            'msg' => 'stage changed'
+        ), 200);
+    }
+
+    public function get_stages()
+    {
+
+        $stages = get_terms([
+            'taxonomy' => 'lead_status',
+            'hide_empty' => false,
+            'fields' => 'id=>name'
+        ]);
+
+        $formatted = [];
+
+        foreach ($stages as $term_id => $term_name) {
+            $formatted[] = [
+                'label' => $term_name,
+                'value' => $term_id
+            ];
+        }
+
+        wp_send_json_success($formatted);
+
+        wp_die();
+
+    }
+
 
     public function get_opportunity()
     {
@@ -85,6 +172,8 @@ class OpportunitiesApi
         }
 
         $single = get_post($id);
+
+        error_log(json_encode($single));
 
         if (!$single || $single->post_type !== $this->post_type) {
             return wp_send_json(array(
@@ -141,6 +230,10 @@ class OpportunitiesApi
             'tax_query' => []
         );
 
+        if (isset($filters['title'])) {
+            $args['s'] = $filters['title'];
+        }
+
         if (!empty($filters)) {
             $args['tax_query']['relation'] = 'AND';
             $args['meta_query'][] = ['relation' => 'AND'];
@@ -157,20 +250,48 @@ class OpportunitiesApi
 
                 if (in_array($item, $fields) && ($value && !empty($value))) {
 
-                    if (!is_array($value)) {
-                        $args['meta_query'][0][] = [
-                            'key' => $item,
-                            'value' => $value,
-                            'compare' => is_numeric($value) ? '=' : 'LIKE'
-                        ];
-                    } else {
-                        $args['meta_query'][0][] = [
-                            'key' => $item,
-                            'value' => $value,
-                            'compare' => 'IN',
 
-                        ];
+                    if ($item == 'close_date') {
+
+                        if (is_array($value) && isset($value['start']) && isset($value['end'])) {
+
+                            $start_day = $value['start']['day'];
+                            $start_year = $value['start']['year'];
+                            $start_month = $value['start']['month'];
+
+                            $end_day = $value['end']['day'];
+                            $end_year = $value['end']['year'];
+                            $end_month = $value['end']['month'];
+
+                            $start_date = sprintf('%04d-%02d-%02d', $start_year, $start_month, $start_day);
+                            $end_date = sprintf('%04d-%02d-%02d', $end_year, $end_month, $end_day);
+
+                            $args['meta_query'][0][] = [
+                                'key' => $item,
+                                'value' => array($start_date, $end_date),
+                                'type' => 'DATE',
+                                'compare' => 'BETWEEN'
+                            ];
+                        }
+
+                    } else {
+                        if (!is_array($value)) {
+                            $args['meta_query'][0][] = [
+                                'key' => $item,
+                                'value' => $value,
+                                'compare' => is_numeric($value) ? '=' : 'LIKE'
+                            ];
+                        } else {
+                            $args['meta_query'][0][] = [
+                                'key' => $item,
+                                'value' => $value,
+                                'compare' => 'IN',
+
+                            ];
+                        }
                     }
+
+
 
                 }
             }
@@ -189,7 +310,8 @@ class OpportunitiesApi
             'recordsTotal' => intval($total_records),
             'recordsFiltered' => $total_records_filtered,
             'data' => $data_arr,
-            //     'args' => $args,
+            // 'filters' => $filters,
+            'args' => $args,
         );
 
         return wp_send_json($response);
@@ -274,7 +396,7 @@ class OpportunitiesApi
         }
 
         $args = array(
-            'post_type' => $title,
+            'post_title' => $title,
             'post_author' => $assigned_to,
             'ID' => $id,
         );
@@ -296,7 +418,8 @@ class OpportunitiesApi
             $resp = [
                 'ok' => true,
                 'msg' => "$this->post_type edited",
-                'data' => $id
+                'data' => $id,
+                'fields' => $fields
             ];
 
             return wp_send_json($resp, 201);
@@ -305,10 +428,19 @@ class OpportunitiesApi
 
     private function construct_object($item_id, $editing = false)
     {
+
+        $taxonomies_list = wp_get_post_terms($item_id, $this->select_taxonomies);
+
         $default_format = 'd-m-Y g:i a';
         $obj = array();
         $obj['id'] = $item_id;
         $obj['title'] = get_the_title($item_id);
+
+        if (!empty($taxonomies_list)) {
+            foreach ($taxonomies_list as $tax_term) {
+                $obj[$tax_term->taxonomy] = $tax_term->name;
+            }
+        }
 
         $assigned = '';
         $assigned_to = get_field('assigned_to', $item_id);
@@ -318,6 +450,8 @@ class OpportunitiesApi
         } else {
             $assigned = $assigned_to;
         }
+
+        $obj['related_services'] = get_field('related_services', $item_id);
 
         $obj['assigned_to'] = $assigned;
         $obj['close_date'] = get_field('close_date', $item_id);
