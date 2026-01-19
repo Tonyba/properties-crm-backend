@@ -74,7 +74,8 @@ class OpportunitiesApi
         add_action('wp_ajax_related_services', array($this, 'related_services'));
         add_action('wp_ajax_nopriv_related_services', array($this, 'related_services'));
 
-
+        add_action('wp_ajax_get_sources', array($this, 'get_sources'));
+        add_action('wp_ajax_nopriv_get_sources', array($this, 'get_sources'));
     }
 
     public function related_services()
@@ -158,6 +159,29 @@ class OpportunitiesApi
 
     }
 
+    public function get_sources()
+    {
+
+        $stages = get_terms([
+            'taxonomy' => 'lead_source',
+            'hide_empty' => false,
+            'fields' => 'id=>name'
+        ]);
+
+        $formatted = [];
+
+        foreach ($stages as $term_id => $term_name) {
+            $formatted[] = [
+                'label' => $term_name,
+                'value' => $term_id
+            ];
+        }
+
+        wp_send_json_success($formatted);
+
+        wp_die();
+
+    }
 
     public function get_opportunity()
     {
@@ -212,6 +236,8 @@ class OpportunitiesApi
         $taxonomies = get_taxonomies(['object_type' => [$this->post_type]]);
         $taxonomies_arr = [];
 
+        $taxonomies_arr = $this->select_taxonomies;
+
         foreach ($taxonomies as $taxonomy => $value) {
             $taxonomies_arr[] = $value;
         }
@@ -243,7 +269,7 @@ class OpportunitiesApi
                 if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
                     $args['tax_query'][] = [
                         'taxonomy' => $item,
-                        'terms' => array($value),
+                        'terms' => !is_array($value) ? array($value) : $value,
                         'field' => 'term_id'
                     ];
                 }
@@ -291,8 +317,6 @@ class OpportunitiesApi
                         }
                     }
 
-
-
                 }
             }
         }
@@ -311,7 +335,7 @@ class OpportunitiesApi
             'recordsFiltered' => $total_records_filtered,
             'data' => $data_arr,
             // 'filters' => $filters,
-            'args' => $args,
+            // 'args' => $args,
         );
 
         return wp_send_json($response);
@@ -435,6 +459,7 @@ class OpportunitiesApi
         $obj = array();
         $obj['id'] = $item_id;
         $obj['title'] = get_the_title($item_id);
+        $obj['contact'] = get_field('contact', $item_id);
 
         if (!empty($taxonomies_list)) {
             foreach ($taxonomies_list as $tax_term) {
@@ -455,6 +480,7 @@ class OpportunitiesApi
 
         $obj['assigned_to'] = $assigned;
         $obj['close_date'] = get_field('close_date', $item_id);
+
 
         if ($editing) {
             $rest_of_fields = get_fields($item_id);
