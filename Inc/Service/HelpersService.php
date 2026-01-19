@@ -179,22 +179,43 @@ class HelpersService
 
         foreach ($fields as $item => $value) {
             if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
+
                 wp_set_post_terms($id, $value, $item);
             }
 
+            if (in_array($item, $taxonomies_arr) && is_array($value) && empty($value)) {
+                wp_set_post_terms($id, [], $item);
+            }
 
             if (in_array($item, $acf_fields) && ($value && !empty($value))) {
                 if ($item == 'from' || $item == 'to') {
                     $date_object = \DateTime::createFromFormat('d/m/Y H:i', $value);
                     if ($date_object)
                         $value = $date_object->format('Y-m-d H:i:s');
-                } else if ($item == 'birthdate') {
+                } else if ($item == 'birthdate' || $item == 'close_date') {
                     $date_object = \DateTime::createFromFormat('Y-m-d', $value);
                     if ($date_object)
                         $value = $date_object->format('d/m/Y');
                 }
                 update_field($item, $value, $id);
             }
+
+            if (in_array($item, $acf_fields) && is_array($value) && empty($value)) {
+                update_field($item, [], $id);
+            }
+        }
+    }
+
+    private function format_date($value)
+    {
+        $day = $value['day'];
+        $year = $value['year'];
+        $month = $value['month'];
+
+        $dateObject = \DateTime::createFromFormat('Y-m-d', sprintf('%04d-%02d-%02d', $year, $month, $day));
+
+        if ($dateObject) {
+            return $dateObject->format('Y-m-d');
         }
     }
 

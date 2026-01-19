@@ -118,9 +118,21 @@ class EventsApi
 
                 if ($item == 'from' && isset($filters['to'])) {
 
+                    $from_date_year = $value['year'];
+                    $from_date_month = $value['month'];
+                    $from_date_day = $value['day'];
+
+                    $to_value = $filters['to'];
+                    $to_date_year = $to_value['year'];
+                    $to_date_month = $to_value['month'];
+                    $to_date_day = $to_value['day'];
+
+                    $start_date = sprintf('%04d-%02d-%02d', $from_date_year, $from_date_month, $from_date_day);
+                    $end_date = sprintf('%04d-%02d-%02d', $to_date_year, $to_date_month, $to_date_day);
+
                     $args['meta_query'][0][] = array(
                         'key' => $item,
-                        'value' => $value,
+                        'value' => $start_date,
                         'compare' => '>=',
                         'type' => 'DATE',
                     );
@@ -128,23 +140,38 @@ class EventsApi
 
                     $args['meta_query'][0][] = array(
                         'key' => 'to', // Replace with your custom field key storing the date
-                        'value' => $filters['to'],
+                        'value' => $end_date,
                         'compare' => '<=',
                         'type' => 'DATE', // Specify the type as DATE for proper comparison
                     );
 
 
                 } elseif ($item == 'from' && !isset($filters['to'])) {
+
+                    $from_date_year = $value['year'];
+                    $from_date_month = $value['month'];
+                    $from_date_day = $value['day'];
+
+                    $start_date = sprintf('%04d-%02d-%02d', $from_date_year, $from_date_month, $from_date_day);
+
                     $args['meta_query'][0][] = array(
                         'key' => $item, // Replace with your custom field key storing the date
-                        'value' => $value,
+                        'value' => $start_date,
                         'compare' => '>=',
                         'type' => 'DATE', // Specify the type as DATE for proper comparison
                     );
+
                 } elseif ($item == 'to' && !isset($filters['from'])) {
+
+                    $to_date_year = $value['year'];
+                    $to_date_month = $value['month'];
+                    $to_date_day = $value['day'];
+
+                    $end_date = sprintf('%04d-%02d-%02d', $to_date_year, $to_date_month, $to_date_day);
+
                     $args['meta_query'][0][] = array(
                         'key' => $item, // Replace with your custom field key storing the date
-                        'value' => $value,
+                        'value' => $end_date,
                         'compare' => '<=',
                         'type' => 'DATE', // Specify the type as DATE for proper comparison
                     );
