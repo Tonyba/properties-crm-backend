@@ -83,6 +83,7 @@ class UpdatesService
             'ok' => true,
             'data' => $updates,
         ));
+
     }
 
     private function formatSpecialValues($key, $value)
@@ -110,7 +111,11 @@ class UpdatesService
         $relation_id = $id;
         $relation_post_type = get_post_type($relation_id);
 
-        if (!in_array($relation_post_type, $this->valid_post_types))
+        if (
+            !in_array($relation_post_type, $this->valid_post_types)
+            || !array_key_exists('assigned_to', $new_data)
+
+        )
             return $new_data;
 
         $action = isset($new_data['action']) ? $new_data['action'] : 'edited';
@@ -131,12 +136,7 @@ class UpdatesService
 
         $acf_fields = wp_list_pluck($acf_fields, 'name');
 
-
         $taxonomies_arr = [];
-
-        if ($relation_post_type != 'task' && $relation_post_type != 'event') {
-
-        }
 
         switch ($relation_post_type) {
             case 'task':
@@ -145,6 +145,10 @@ class UpdatesService
 
             case 'event':
                 $taxonomies_arr = ['event_state', 'priority', 'event_type'];
+                break;
+
+            case 'contact':
+                $taxonomies_arr = ['lead_source'];
                 break;
 
             default:
@@ -189,7 +193,7 @@ class UpdatesService
         $insert_new = '';
 
         $filtered_old_data = [];
-        $filterd_new_data = [];
+        $filtered_new_data = [];
 
         foreach ($new_data as $key => $value) {
             if (array_key_exists($key, $old_data)) {
@@ -198,7 +202,7 @@ class UpdatesService
 
                 if ($old_data[$key] != $value && !$is_term) {
                     $filtered_old_data[$key] = $old_data[$key];
-                    $filterd_new_data[$key] = $value;
+                    $filtered_new_data[$key] = $value;
                 } else {
                     foreach ($old_data[$key] as $term) {
                         $term_id = $term->term_id;
@@ -206,13 +210,13 @@ class UpdatesService
                             foreach ($value as $val) {
                                 if ($val != $term_id) {
                                     $filtered_old_data[$key] = $old_data[$key];
-                                    $filterd_new_data[$key] = $value;
+                                    $filtered_new_data[$key] = $value;
                                 }
                             }
                         } else {
                             if ($value != $term_id) {
                                 $filtered_old_data[$key] = $old_data[$key];
-                                $filterd_new_data[$key] = $value;
+                                $filtered_new_data[$key] = $value;
                             }
                         }
                     }
@@ -238,7 +242,7 @@ class UpdatesService
             }
         }
 
-        foreach ($filterd_new_data as $key => $value) {
+        foreach ($filtered_new_data as $key => $value) {
 
             if (is_array($value) || taxonomy_exists($key)) {
 
@@ -266,6 +270,7 @@ class UpdatesService
             }
         }
 
+
         update_field('user', $user_id, $id);
         update_field('relation', $relation_id, $id);
         update_field('new_data', $insert_new, $id);
@@ -287,7 +292,7 @@ class UpdatesService
         $user = get_user_by('id', $user_id);
 
         $action = wp_get_post_terms($id, 'update-action', ['fields' => 'names']);
-        $action = $action[0];
+        $action = !empty($action) ? $action[0] : '';
 
         $object['date'] = $date . ' - ' . $this->helpersService->timeAgo($date);
         $object['new_data'] = $new_data;

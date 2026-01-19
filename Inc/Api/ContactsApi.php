@@ -229,6 +229,8 @@ class ContactsApi
 
         } else {
 
+            $fields['action'] = 'edited';
+            do_action('pre_post_update', $id, $fields);
 
             $this->helperService->save_custom_data($id, $fields, $this->post_type, $this->select_taxonomies);
 
