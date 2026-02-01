@@ -112,7 +112,7 @@ class EventsApi
 
         if (!empty($filters)) {
             $args['tax_query']['relation'] = 'AND';
-            $args['meta_query'][] = ['relation' => 'AND'];
+            //$args['meta_query'][] = ['relation' => 'AND'];
 
             foreach ($filters as $item => $value) {
 
@@ -130,7 +130,7 @@ class EventsApi
                     $start_date = sprintf('%04d-%02d-%02d', $from_date_year, $from_date_month, $from_date_day);
                     $end_date = sprintf('%04d-%02d-%02d', $to_date_year, $to_date_month, $to_date_day);
 
-                    $args['meta_query'][0][] = array(
+                    $args['meta_query'][] = array(
                         'key' => $item,
                         'value' => $start_date,
                         'compare' => '>=',
@@ -138,7 +138,7 @@ class EventsApi
                     );
 
 
-                    $args['meta_query'][0][] = array(
+                    $args['meta_query'][] = array(
                         'key' => 'to', // Replace with your custom field key storing the date
                         'value' => $end_date,
                         'compare' => '<=',
@@ -154,7 +154,7 @@ class EventsApi
 
                     $start_date = sprintf('%04d-%02d-%02d', $from_date_year, $from_date_month, $from_date_day);
 
-                    $args['meta_query'][0][] = array(
+                    $args['meta_query'][] = array(
                         'key' => $item, // Replace with your custom field key storing the date
                         'value' => $start_date,
                         'compare' => '>=',
@@ -169,7 +169,7 @@ class EventsApi
 
                     $end_date = sprintf('%04d-%02d-%02d', $to_date_year, $to_date_month, $to_date_day);
 
-                    $args['meta_query'][0][] = array(
+                    $args['meta_query'][] = array(
                         'key' => $item, // Replace with your custom field key storing the date
                         'value' => $end_date,
                         'compare' => '<=',
@@ -188,13 +188,13 @@ class EventsApi
                     if (in_array($item, $fields) && ($value && !empty($value))) {
 
                         if (!is_array($value)) {
-                            $args['meta_query'][0][] = [
+                            $args['meta_query'][] = [
                                 'key' => $item,
                                 'value' => $value,
                                 'compare' => is_numeric($value) ? '=' : 'LIKE'
                             ];
                         } else {
-                            $args['meta_query'][0][] = [
+                            $args['meta_query'][] = [
                                 'key' => $item,
                                 'value' => $value,
                                 'compare' => 'IN',

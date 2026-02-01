@@ -12,6 +12,7 @@ require_once PLUGIN_PATH . 'Inc/Api/EventsApi.php';
 require_once PLUGIN_PATH . 'Inc/Api/DocumentsApi.php';
 require_once PLUGIN_PATH . 'Inc/Api/ContactsApi.php';
 require_once PLUGIN_PATH . 'Inc/Api/OpportunitiesApi.php';
+require_once PLUGIN_PATH . 'Inc/Api/AuthApi.php';
 
 require_once PLUGIN_PATH . 'Inc/Service/UpdatesService.php';
 require_once PLUGIN_PATH . 'Inc/Service/HelpersService.php';

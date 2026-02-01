@@ -392,6 +392,8 @@ class LeadsApi
                 $taxonomies_arr[] = $value;
             }
 
+            $taxonomies_arr = array_merge($taxonomies_arr, $this->select_taxonomies);
+
             foreach ($fields as $item => $value) {
                 if (in_array($item, $taxonomies_arr) && ($value && !empty($value))) {
                     wp_set_post_terms($id, $value, $item);
@@ -406,7 +408,7 @@ class LeadsApi
 
             return wp_send_json(array(
                 'ok' => true,
-                'msg' => 'event/task edited',
+                'msg' => 'lead edited',
             ), 201);
 
         }

@@ -262,7 +262,7 @@ class OpportunitiesApi
 
         if (!empty($filters)) {
             $args['tax_query']['relation'] = 'AND';
-            $args['meta_query'][] = ['relation' => 'AND'];
+            // $args['meta_query'][] = ['relation' => 'AND'];
 
             foreach ($filters as $item => $value) {
 
@@ -292,7 +292,7 @@ class OpportunitiesApi
                             $start_date = sprintf('%04d-%02d-%02d', $start_year, $start_month, $start_day);
                             $end_date = sprintf('%04d-%02d-%02d', $end_year, $end_month, $end_day);
 
-                            $args['meta_query'][0][] = [
+                            $args['meta_query'][] = [
                                 'key' => $item,
                                 'value' => array($start_date, $end_date),
                                 'type' => 'DATE',
@@ -302,13 +302,13 @@ class OpportunitiesApi
 
                     } else {
                         if (!is_array($value)) {
-                            $args['meta_query'][0][] = [
+                            $args['meta_query'][] = [
                                 'key' => $item,
                                 'value' => $value,
                                 'compare' => is_numeric($value) ? '=' : 'LIKE'
                             ];
                         } else {
-                            $args['meta_query'][0][] = [
+                            $args['meta_query'][] = [
                                 'key' => $item,
                                 'value' => $value,
                                 'compare' => 'IN',
@@ -335,7 +335,7 @@ class OpportunitiesApi
             'recordsFiltered' => $total_records_filtered,
             'data' => $data_arr,
             // 'filters' => $filters,
-            // 'args' => $args,
+            'args' => $args,
         );
 
         return wp_send_json($response);
@@ -436,6 +436,8 @@ class OpportunitiesApi
 
         } else {
 
+            $fields['action'] = 'edited';
+            do_action('pre_post_update', $id, $fields);
 
             $this->helperService->save_custom_data($id, $fields, $this->post_type, $this->select_taxonomies, true);
 

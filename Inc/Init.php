@@ -21,6 +21,7 @@ final class Init
             Api\LeadsApi::class,
             Api\TasksApi::class,
             Api\EventsApi::class,
+            Api\AuthApi::class,
             Base\SettingsLinks::class,
             Service\UpdatesService::class,
             Service\HelpersService::class,
