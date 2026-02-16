@@ -19,6 +19,11 @@ class OpportunitiesApi
         'lead_source'
     );
 
+    private static $privated_tax = array(
+        'lead_status',
+        'lead_source'
+    );
+
     private $expected_body = array(
         array(
             'key' => 'title',
@@ -452,6 +457,10 @@ class OpportunitiesApi
         }
     }
 
+    public static function get_type_taxonomies()
+    {
+        return self::$privated_tax;
+    }
     private function construct_object($item_id, $editing = false)
     {
 
@@ -469,6 +478,10 @@ class OpportunitiesApi
             }
         }
 
+        $country = '';
+        $state = '';
+        $city = '';
+
         $assigned = '';
         $assigned_to = get_field('assigned_to', $item_id);
 
@@ -476,6 +489,13 @@ class OpportunitiesApi
             $assigned = get_user_by('ID', $assigned_to)->display_name;
         } else {
             $assigned = $assigned_to;
+            $country = get_field('country', $item_id);
+            $state = get_field('state', $item_id);
+            $city = get_field('city', $item_id);
+
+            $obj['country'] = $country;
+            $obj['state'] = $state;
+            $obj['city'] = $city;
         }
 
         $obj['related_services'] = get_field('related_services', $item_id);

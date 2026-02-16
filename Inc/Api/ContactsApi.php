@@ -20,6 +20,10 @@ class ContactsApi
         'lead_source'
     );
 
+    private static $privated_tax = array(
+        'lead_source'
+    );
+
     private $expected_body = array(
         array(
             'key' => 'assigned_to',
@@ -86,6 +90,11 @@ class ContactsApi
             'ok' => true,
             'data' => $data
         ), 200);
+    }
+
+    public static function get_type_taxonomies()
+    {
+        return self::$privated_tax;
     }
 
     public function new_contact()
@@ -348,10 +357,17 @@ class ContactsApi
         $assigned = '';
         $assigned_to = get_field('assigned_to', $item_id);
 
+        $country = '';
+        $state = '';
+        $city = '';
+
         if (!$editing) {
             $assigned = get_user_by('ID', $assigned_to)->display_name;
         } else {
             $assigned = $assigned_to;
+            $country = get_field('country', $item_id);
+            $state = get_field('state', $item_id);
+            $city = get_field('city', $item_id);
         }
 
         $obj = [
@@ -360,7 +376,10 @@ class ContactsApi
             'last_name' => $last_name,
             'email' => $email,
             'office_phone' => $office_phone,
-            'assigned_to' => $assigned
+            'assigned_to' => $assigned,
+            'country' => $country,
+            'state' => $state,
+            'city' => $city
         ];
 
         if ($editing) {

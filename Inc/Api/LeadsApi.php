@@ -23,6 +23,12 @@ class LeadsApi
         'lead_status'
     );
 
+    private static $privated_tax = array(
+        'industry',
+        'lead_source',
+        'lead_status'
+    );
+
     private $expected_body = array(
         array(
             'key' => 'first_name',
@@ -82,6 +88,14 @@ class LeadsApi
 
         add_action('wp_ajax_delete_lead', array($this, 'delete_lead'));
         add_action('wp_ajax_nopriv_delete_lead', array($this, 'delete_lead'));
+
+        add_action('wp_ajax_' . $this->post_type . '_taxonomies', array($this, 'get_taxonomies'));
+        add_action('wp_ajax_nopriv_' . $this->post_type . '_taxonomies', array($this, 'get_taxonomies'));
+    }
+
+    public function get_taxonomies()
+    {
+        return wp_send_json($this->helperService->get_post_types_taxonomies_terms($this->post_type, $this->select_taxonomies));
     }
 
     private function get_select_taxonomies()
@@ -115,6 +129,11 @@ class LeadsApi
 
             return $terms;
         }
+    }
+
+    public static function get_type_taxonomies()
+    {
+        return self::$privated_tax;
     }
 
     public function lead_agents()
@@ -427,12 +446,19 @@ class LeadsApi
         $assigned_to = get_field('assigned_to', $item_id);
         $description = get_field('description', $item_id);
 
+        $country = '';
+        $state = '';
+        $city = '';
+
         $assigned = '';
 
         if (!$editing) {
             $assigned = get_user_by('ID', $assigned_to)->display_name;
         } else {
             $assigned = $assigned_to;
+            $country = get_field('country', $item_id);
+            $state = get_field('state', $item_id);
+            $city = get_field('city', $item_id);
         }
 
         $requested_property = get_field('requested_property', $item_id);
@@ -447,7 +473,10 @@ class LeadsApi
             'email' => $email,
             'assigned_to' => $assigned,
             'requested_property' => $requested_property,
-            'description' => $description
+            'description' => $description,
+            'country' => $country,
+            'state' => $state,
+            'city' => $city
         );
 
         foreach ($this->select_taxonomies as $taxonomy) {

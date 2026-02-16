@@ -71,8 +71,6 @@ class DocumentsApi
 
         $fields = wp_list_pluck($fields, 'name');
 
-
-
         $total_records = wp_count_posts($this->post_type)->publish;
 
         $args = array(
